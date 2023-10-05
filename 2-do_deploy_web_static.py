@@ -1,41 +1,38 @@
 #!/usr/bin/python3
-"""Deploy an archive of static html to my web servers with Fabric3"""
+""" Fabric script that generates a .tgz archive """
+from fabric.decorators import task
+from fabric.api import *
 
-from fabric import api
-from fabric.contrib import files
-import os
-
-
-api.env.hosts = ['52.91.154.135', '54.87.207.246']
-api.env.user = 'ubuntu'
-api.env.key_filename = '~/.ssh/alx_server'
+env.hosts = ["100.27.4.102", "54"]
 
 
+@task
 def do_deploy(archive_path):
-    """Function to transfer `archive_path` to web servers.
-    Args:
-        archive_path (str): path of the .tgz file to transfer
-    Returns: True on success, False otherwise.
-    """
-    if not os.path.isfile(archive_path):
+    """Fabric script that distributes an archive to web servers"""
+    try:
+        with_ext = archive_path.split("/")[-1]
+        without_ext = archive_path.split("/")[-1].split(".")[0]
+        put(archive_path, "/tmp")
+        run("mkdir -p /data/web_static/releases/" + without_ext)
+        run("tar -xzf /tmp/{} -C /data/web_static/releases/\
+{}".format(with_ext, without_ext))
+        run("rm /tmp/{}".format(with_ext))
+        run("mv /data/web_static/releases/{}/web_static/* \
+/data/web_static/releases/{}".format(without_ext, without_ext))
+        run("rm -rf /data/web_static/releases/{}/web_static\
+".format(without_ext))
+        run("rm -rf /data/web_static/current")
+        run("ln -s /data/web_static/releases/{}/ \
+/data/web_static/current".format(without_ext))
+        return True
+    except Exception:
         return False
-    with api.cd('/tmp'):
-        basename = os.path.basename(archive_path)
-        root, ext = os.path.splitext(basename)
-        outpath = '/data/web_static/releases/{}'.format(root)
-        try:
-            putpath = api.put(archive_path)
-            if files.exists(outpath):
-                api.run('rm -rdf {}'.format(outpath))
-            api.run('mkdir -p {}'.format(outpath))
-            api.run('tar -xzf {} -C {}'.format(putpath[0], outpath))
-            api.run('rm -f {}'.format(putpath[0]))
-            api.run('mv -u {}/web_static/* {}'.format(outpath, outpath))
-            api.run('rm -rf {}/web_static'.format(outpath))
-            api.run('rm -rf /data/web_static/current')
-            api.run('ln -sf {} /data/web_static/current'.format(outpath))
-            print('New version deployed!')
-        except:
-            return False
-        else:
-            return True
+
+
+@task
+def do_pack():
+    """generates a .tgz archive from web_static"""
+    local(
+        "mkdir versions ; tar -cvzf \
+versions/web_static_$(date +%Y%m%d%H%M%S).tgz web_static/"
+    )
