@@ -3,7 +3,7 @@
 from fabric.decorators import task
 from fabric.api import *
 
-env.hosts = ["100.27.4.102", "54.84.51.4"]
+env.hosts = ["100.26.156.253", "54.84.51.4"]
 
 
 @task
