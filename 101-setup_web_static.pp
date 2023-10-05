@@ -1,88 +1,37 @@
-# AirBnB clone web server setup and configuration
-
-# SCRIPT INCOMPLETE. NEEDS SOME MORE THINKING---
-$nginx_conf = "server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    add_header X-Served-By ${hostname};
-    root   /var/www/html;
-    index  index.html index.htm;
-    location /hbnb_static {
-        alias /data/web_static/current;
-        index index.html index.htm;
-    }
-    location /redirect_me {
-        return 301 http://linktr.ee/firdaus_h_salim/;
-    }
-    error_page 404 /404.html;
-    location /404 {
-      root /var/www/html;
-      internal;
-    }
-}"
-
-package { 'nginx':
-  ensure   => 'present',
-  provider => 'apt'
+# Puppet script sets up your web servers for the deployment of web_static.
+exec { 'update':
+  command => 'apt-get update',
+  provider => shell,
 }
-
--> file { '/data':
-  ensure  => 'directory'
+-> exec { 'install':
+  command => 'apt-get -y install nginx',
+  provider => shell,
 }
-
--> file { '/data/web_static':
-  ensure => 'directory'
+-> exec { 'create_test':
+  command => 'mkdir -p /data/web_static/releases/test/',
+  provider => shell,
 }
-
--> file { '/data/web_static/releases':
-  ensure => 'directory'
+-> exec { 'create_shared':
+  command => 'mkdir -p /data/web_static/shared/',
+  provider => shell,
 }
-
--> file { '/data/web_static/releases/test':
-  ensure => 'directory'
+-> exec { 'yo_mama':
+  command => 'echo "yo mama" > /data/web_static/releases/test/index.html',
+  provider => shell,
 }
-
--> file { '/data/web_static/shared':
-  ensure => 'directory'
+-> exec { 'simlink':
+  command => 'ln -sfn /data/web_static/releases/test /data/web_static/current',
+  provider => shell,
 }
-
--> file { '/data/web_static/releases/test/index.html':
-  ensure  => 'present',
-  content => "this webpage is found in data/web_static/releases/test/index.htm \n"
+-> exec { 'permission':
+  command => 'chown -R ubuntu:ubuntu /data/',
+  provider => shell,
 }
-
--> file { '/data/web_static/current':
-  ensure => 'link',
-  target => '/data/web_static/releases/test'
+-> exec { 'add_lines':
+  command => 'sudo sed -i "s|server_name _;|server_name _;\n\n\tlocation /hbnb_static {\n\t\talias /data/web_static/current/;\n\t}|" /etc/nginx/sites-enabled/default',
+  provider => shell,
 }
-
--> exec { 'chown -R ubuntu:ubuntu /data/':
-  path => '/usr/bin/:/usr/local/bin/:/bin/'
-}
-
-file { '/var/www':
-  ensure => 'directory'
-}
-
--> file { '/var/www/html':
-  ensure => 'directory'
-}
-
--> file { '/var/www/html/index.html':
-  ensure  => 'present',
-  content => "This is my first upload  in /var/www/index.html***\n"
-}
-
--> file { '/var/www/html/404.html':
-  ensure  => 'present',
-  content => "Ceci n'est pas une page - Error page\n"
-}
-
--> file { '/etc/nginx/sites-available/default':
-  ensure  => 'present',
-  content => $nginx_conf
-}
-
--> exec { 'nginx restart':
-  path => '/etc/init.d/'
+-> exec { 'restart':
+  command => 'sudo service nginx restart',
+  provider => shell,
 }
